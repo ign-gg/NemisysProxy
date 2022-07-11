@@ -13,9 +13,13 @@ import org.itxtech.nemisys.Server;
 
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,6 +69,54 @@ public class RakNetServer extends RakNet {
         Server.getInstance().getScheduler().scheduleRepeatingTask(packetsPerSecond::clear, 20, true);
         if (Server.customStuff) {
             Server.getInstance().getScheduler().scheduleRepeatingTask(violationCount::clear, 20, true);
+
+            try {
+                FileReader fr = new FileReader("banned-ips.txt");
+                BufferedReader in = new BufferedReader(fr);
+                String line;
+                int lines = 0;
+                while ((line = in.readLine()) != null) {
+                    String[] split1 = line.split("/");
+                    String rawAddress;
+                    if (split1.length == 1) {
+                        rawAddress = split1[0];
+                    } else {
+                        if (split1.length != 2) {
+                            System.out.println("[banned-ips.txt] Invalid entry: " + line);
+                            continue;
+                        }
+                        String[] split2 = split1[1].split(":");
+                        if (split2.length != 2 || (!split2[1].contains("magic") && !split2[1].contains("ping"))) {
+                            System.out.println("[banned-ips.txt] Invalid entry: " + line);
+                            continue;
+                        }
+                        rawAddress = split2[0];
+                        if (rawAddress.isEmpty()) {
+                            System.out.println("[banned-ips.txt] Parsed entry is empty: " + line);
+                            continue;
+                        }
+                    }
+                    if (!rawAddress.isEmpty()) {
+                        try {
+                            InetAddress address = InetAddress.getByName(rawAddress);
+                            if (address == null) {
+                                System.out.println("[banned-ips.txt] InetAddress is null: " + rawAddress);
+                                continue;
+                            }
+                            this.block(address);
+                        } catch (UnknownHostException e) {
+                            System.out.println("[banned-ips.txt] Failed to get InetAddress: " + rawAddress);
+                            continue;
+                        }
+                        lines++;
+                    }
+                }
+                in.close();
+                Server.getInstance().getLogger().info("Loaded " + lines + " banned IPs");
+            } catch (FileNotFoundException ignore) {
+            } catch (Exception e) {
+                throw new RuntimeException("Exception while loading banned-ips.txt", e);
+            }
         }
     }
 
@@ -115,7 +167,7 @@ public class RakNetServer extends RakNet {
     public void onOpenConnectionRequest1(ChannelHandlerContext ctx, DatagramPacket packet) {
         ByteBuf buffer = packet.content();
         if (!buffer.isReadable(16)) {
-            Server.getInstance().getLogger().info(packet.sender() + " ocr1 not readable");
+            Server.getInstance().getLogger().info(packet.sender() + " ocr1 unreadable");
             return;
         }
 
