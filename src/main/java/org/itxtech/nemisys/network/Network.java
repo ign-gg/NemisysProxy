@@ -25,7 +25,7 @@ import java.util.Set;
 @SuppressWarnings("unchecked")
 public class Network {
 
-    private Class<? extends DataPacket>[] packetPool = new Class[256];
+    private Class<? extends DataPacket>[] packetPool = new Class[512];
     private final Server server;
     private final Set<SourceInterface> interfaces = new HashSet<>();
     private final Set<AdvancedSourceInterface> advancedInterfaces = new HashSet<>();
@@ -222,7 +222,7 @@ public class Network {
     }
 
     private void registerPackets() {
-        this.packetPool = new Class[256];
+        this.packetPool = new Class[512];
 
         this.registerPacket(ProtocolInfo.LOGIN_PACKET, LoginPacket.class);
         this.registerPacket(ProtocolInfo.DISCONNECT_PACKET, DisconnectPacket.class);

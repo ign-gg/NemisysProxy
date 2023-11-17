@@ -22,6 +22,9 @@ public class DisconnectPacket extends DataPacket {
     @Override
     public void encode() {
         this.reset();
+        if (protocol >= 622) { // 1.20.40
+            this.putVarInt(0); // Disconnect fail reason UNKNOWN
+        }
         this.putBoolean(this.hideDisconnectionScreen);
         if (!this.hideDisconnectionScreen) {
             this.putString(this.message);
